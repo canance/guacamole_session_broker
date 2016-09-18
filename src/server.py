@@ -1,27 +1,21 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from flask import Flask, request, redirect
+#!/usr/bin/env python3
+
 import paramiko
 import paramiko.client
-import db
+from flask import Flask, request, redirect
+from paramiko.ssh_exception import AuthenticationException
+
 
 app = Flask(__name__)
 
-
-#DB_USER = 'guacamole_user'
-#DB_PASS = 'password'
-#DB_HOST = 'localhost'
-#DB_DATABASE = 'gucamole_db'
-SSH_SERVER = 'localhost'
+SSH_SERVER = 'vnc' # derived from docker link
 VNC_PASS = 'vnc_password'
 GUAC_USER = 'random_user'
 GUAC_PASS = 'random_pass'
-GUAC_WEBSERVER = '192.168.1.104:8080'
+GUAC_WEBSERVER = 'localhost:8080' # port exposed from docker
 USER_MAPPING_PATH = '/etc/guacamole/user-mapping.xml'
 
-#engine = create_engine('mysql://%s:%s@%s/%s' % (DB_USER, DB_PASS, DB_HOST, DB_DATABASE))
-#Session = sessionmaker(bind=engine)
-#s = Session()
+
 def generate_config(vnc_display, user=GUAC_USER, guac_pass=GUAC_PASS, vnc_pass=VNC_PASS):
     user_mapping = (
         '<user-mapping>\n'
@@ -68,7 +62,11 @@ def get_vnc_display(ssh_client):
 
 
 def auth_user(user, passwd):
-    ssh_client = create_ssh_client(SSH_SERVER, user, passwd)        
+    try:
+        ssh_client = create_ssh_client(SSH_SERVER, user, passwd)        
+    except AuthenticationException:
+        # invalid login!
+        return False
     display = get_vnc_display(ssh_client)
     if not display:
         set_vncpasswd(ssh_client, VNC_PASS)
@@ -104,6 +102,8 @@ def index():
         if auth_user(user, passwd):
             url = "http://%s/guacamole/#/?username=%s&password=%s" % (GUAC_WEBSERVER, GUAC_USER, GUAC_PASS)
             return redirect(url, code=302)
+        else:
+            return "Invalid login!"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
