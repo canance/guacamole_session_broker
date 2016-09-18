@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# Cory Nance
+# 9/17/2016
+# server.py - A guacamole session broker
+
 import paramiko
 import paramiko.client
 from flask import Flask, request, redirect
@@ -17,6 +21,9 @@ USER_MAPPING_PATH = '/etc/guacamole/user-mapping.xml'
 
 
 def generate_config(vnc_display, user=GUAC_USER, guac_pass=GUAC_PASS, vnc_pass=VNC_PASS):
+    """
+    Generate a user-mapping.xml config for guacamole
+    """
     user_mapping = (
         '<user-mapping>\n'
         '   <authorize username="%s" password="%s">\n'
@@ -35,6 +42,9 @@ def generate_config(vnc_display, user=GUAC_USER, guac_pass=GUAC_PASS, vnc_pass=V
 
 
 def set_vncpasswd(ssh_client, passwd):
+    """
+    Set vncpasswd on a remote computer.
+    """
     stdin, stdout, stderr = ssh_client.exec_command('vncpasswd')
     stdin.write('%s\n' % passwd)
     stdin.write('%s\n' % passwd)
@@ -44,11 +54,17 @@ def set_vncpasswd(ssh_client, passwd):
  
 
 def run_command(ssh_client, cmd):
+    """
+    Run a command on a remote computer using ssh
+    """
     stdin, stdout, stderr = ssh_client.exec_command(cmd)
     return stdout.channel.recv_exit_status()
 
 
 def create_ssh_client(server, user, passwd):
+    """
+    Creates an SSH client to be used by other functions.
+    """
     ssh_client = paramiko.client.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.client.WarningPolicy())
     ssh_client.connect(server, username=user, password=passwd)
@@ -56,12 +72,20 @@ def create_ssh_client(server, user, passwd):
 
 
 def get_vnc_display(ssh_client):
+    """
+    Uses the ssh_client to get any running vnc display connections
+    """
     stdin, stdout, stderr = ssh_client.exec_command('vncserver -list | tail -1 | cut -f1')
     display = stdout.readline().strip()
     return display if display[0] == ':' else False
 
 
 def auth_user(user, passwd):
+    """
+    Tries to auth a user by SSH'ing into the SSH_SERVER.
+    If it is succesful it will set the vnc passwd and nohup a vncserver.
+    Returns True if succesful else False.
+    """
     try:
         ssh_client = create_ssh_client(SSH_SERVER, user, passwd)        
     except AuthenticationException:
@@ -80,6 +104,10 @@ def auth_user(user, passwd):
    
 @app.route("/", methods=['GET', 'POST'])
 def index():
+    """
+    This is the 'main' function.  If it's a GET request then display the login page.
+    If it's a POST request then process the login.
+    """
     if request.method == 'GET':
         
         return app.send_static_file('login.html')
@@ -104,6 +132,7 @@ def index():
             return redirect(url, code=302)
         else:
             return "Invalid login!"
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
