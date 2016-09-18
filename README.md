@@ -23,7 +23,7 @@ $ docker-compose up
 Open a browser and view http://localhost:5000
 
 
-## Further Development
+## Future Development
 - Use kerberos authentication
 - Create a [custom authenticator](http://guacamole.incubator.apache.org/doc/gug/custom-auth.html) for Guacamole
 - Add a database backend to support multiple users and multiple connections
